@@ -433,6 +433,7 @@ def draw_ticks(cairo_context, y_coordinate: float, seq_length: int, image_width:
             marker = "M"
         marker_num   = round(marker_num, 2)
         marker_label = f"{str(marker_num)}{marker}"
+        # print(marker_label)
         marker_pos   = x_pos + (allocated_pos * i)
         cairo_context.move_to(marker_pos, mark_ypos1)
         cairo_context.line_to(marker_pos, mark_ypos2)
@@ -573,7 +574,7 @@ def plot_cmh(cairo_context, snps: list[SNP], svg_height: float, y_offset: float,
         y_pos = ((1 - (snp.value / ceiling)) * allocated_pos_y) - 15
         cairo_context.arc(x_pos, y_pos, 12, 0, 2*math.pi)
         cairo_context.close_path()
-        cairo_context.set_source_rgb(0, 0, 128)
+        cairo_context.set_source_rgb(43/255, 43/255, 43/255)
         cairo_context.fill()
 
     return 0
