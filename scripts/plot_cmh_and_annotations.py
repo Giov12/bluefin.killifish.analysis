@@ -154,7 +154,6 @@ def get_color(num: int) -> list[float]:
 
     return colors[num][1:]
 
-
 def parse_gtf() -> dict[str, FEATURE]:
     """return a map of features"""
 
@@ -295,7 +294,9 @@ def get_y_spacing(fig_height: int, y_offset: float, max_cmh: float) -> tuple[flo
 
 def plot_chrom(cairo_context, seq_length: int, seq_id: str, allocated_pos: float, 
                seq_height: float, x_pos: float) -> int:
-    """ plot sequence to scale to the longest sequence"""
+    """plot a rectange to represent the genomic locus"""
+
+    global leftbound, rightbound
 
     sequence_id = seq_id
 
@@ -355,8 +356,8 @@ def plot_chrom(cairo_context, seq_length: int, seq_id: str, allocated_pos: float
         "Helvetica", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL
     )
     cairo_context.move_to(x, y)
-    left = "{:,}".format(leftbound)
-    right = "{:,}".format(rightbound)
+    left   = "{:,}".format(leftbound)
+    right  = "{:,}".format(rightbound)
     seq_id = f"{sequence_id}: {left}-{right}"
     cairo_context.show_text(seq_id)
     cairo_context.stroke()
@@ -406,7 +407,6 @@ def create_ticks(seq_length: int) -> tuple[int, int]:
 
     return tick_ct, multiplier
 
-
 def draw_ticks(cairo_context, y_coordinate: float, seq_length: int, image_width: float, 
                section: float, x_pos: float) -> int:
     """add tick marks to the reference sequence"""
@@ -423,7 +423,6 @@ def draw_ticks(cairo_context, y_coordinate: float, seq_length: int, image_width:
     # adjust for just ticks
     allocated_pos = ((image_width / seq_length) * \
         seq_length) / (seq_length/multiplier)
-
 
     for i in range(1, tick_ct + 1):
         marker_num = i * multiplier  # interval scheme
@@ -569,10 +568,12 @@ def fill_in_matches(cairo_context, y: float, x_pos: float, allocated_pos: float,
 
     return 0
 
-
 def plot_cmh(cairo_context, snps: list[SNP], fig_height: float, y_offset: float, 
              x_start: float, allocated_pos: float, ceiling: float) -> int:
     """draw the SNPs, which are circles representing the CMH value"""
+
+    global leftbound
+
     allocated_pos_y = fig_height - (y_offset * 1.75)
 
     for snp in snps:
@@ -586,11 +587,12 @@ def plot_cmh(cairo_context, snps: list[SNP], fig_height: float, y_offset: float,
     return 0
 
 def draw_image(exons: dict[str, FEATURE], snps: list[SNP], gaps: list[FEATURE], max_cmh: float) -> int:
-    """plot clumps using plotting functions"""
+    """the function is the orchestrator in this script"""
 
     global leftbound, rightbound, chrom, iformat
 
-    # this will create a svg for later tweaking
+    # right now, these are hard coded. Can come back & 
+    # make these into reasonable values
     fig_width    = 5000  # 7500
     fig_height   = 3000
     y_offset     = 250
