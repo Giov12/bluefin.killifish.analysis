@@ -15,11 +15,14 @@ chrom      = ''
 gap_file   = ''
 leftbound  = 0
 rightbound = 10_000_000
+iformat    = "svg"
 
 def get_arguments() -> int:
     """get the arguments"""
 
-    global cmh, gtf, chrom, gap_file, leftbound, rightbound
+    global cmh, gtf, chrom, gap_file, leftbound, rightbound, iformat
+
+    formats = ["svg", "pdf", "png"]
 
     parser = argparse.ArgumentParser(description="Plot region of interest with cmh values after FDR")
     parser.add_argument("-g", "--gtf", help="Gene annotations in GTF/GFF3 format", required=True)
@@ -28,6 +31,7 @@ def get_arguments() -> int:
     parser.add_argument("-l", "--leftbound", help="lefbound", default=leftbound, type=int)
     parser.add_argument("-r", "--rightbound", help="rightbound", default=rightbound,type=int)
     parser.add_argument("-C", "--chrom", help="name of chromosome to plot", default=chrom, required=True)
+    parser.add_argument("-f", "--format", help="output image format [default: svg]", default=iformat, choices=formats)
 
     args       = parser.parse_args()
     gtf        = args.gtf
@@ -36,6 +40,7 @@ def get_arguments() -> int:
     leftbound  = args.leftbound
     rightbound = args.rightbound
     chrom      = args.chrom
+    iformat    = args.format
 
     assert os.path.isfile(cmh), f"Could not locate {cmh}"
     assert os.path.isfile(gtf), f"Could not locate {gtf}"
@@ -267,7 +272,7 @@ def parse_gap_file() -> list[FEATURE]:
 
 ########## helper functions #############
 
-def get_y_spacing(svg_height: int, y_offset: float, max_cmh: float) -> tuple[float, float]:
+def get_y_spacing(fig_height: int, y_offset: float, max_cmh: float) -> tuple[float, float]:
     """adjust image height for # of seqs"""
 
     max_cmh = math.ceil(max_cmh)
@@ -280,7 +285,7 @@ def get_y_spacing(svg_height: int, y_offset: float, max_cmh: float) -> tuple[flo
             ceiling += 1
 
     num_ticks = (ceiling // 5) + 1 # include tick for 0
-    space     = svg_height - y_offset
+    space     = fig_height - y_offset
     interval  = space / num_ticks
 
     return interval, ceiling
@@ -288,7 +293,8 @@ def get_y_spacing(svg_height: int, y_offset: float, max_cmh: float) -> tuple[flo
 ########## plotting functions #############
 
 
-def plot_chrom(cairo_context, seq_length: int, seq_id: str, allocated_pos: float, seq_height: float, x_pos: float):
+def plot_chrom(cairo_context, seq_length: int, seq_id: str, allocated_pos: float, 
+               seq_height: float, x_pos: float) -> int:
     """ plot sequence to scale to the longest sequence"""
 
     sequence_id = seq_id
@@ -355,6 +361,7 @@ def plot_chrom(cairo_context, seq_length: int, seq_id: str, allocated_pos: float
     cairo_context.show_text(seq_id)
     cairo_context.stroke()
 
+    return 0
 
 def create_ticks(seq_length: int) -> tuple[int, int]:
     """Find the appropriate marker lengths for tick marks"""
@@ -449,7 +456,6 @@ def draw_ticks(cairo_context, y_coordinate: float, seq_length: int, image_width:
 
     return 0
 
-
 def plot_label(cairo_context, y: float, theta: float, label: str, midpoint: float) -> int:
     """plot the text labels"""
 
@@ -469,12 +475,12 @@ def plot_label(cairo_context, y: float, theta: float, label: str, midpoint: floa
 
     return 0
 
-def draw_y_axis(cairo_context, x_pos: float, svg_height: float, y_offset: float, 
+def draw_y_axis(cairo_context, x_pos: float, fig_height: float, y_offset: float, 
                 spacing: float, ceiling: float) -> int:
     """just draws a straight line and horizontal ticks"""
 
     num_ticks = int(ceiling // 5) + 1
-    start_y   = svg_height - (y_offset * 1.75) 
+    start_y   = fig_height - (y_offset * 1.75) 
     top_y     = start_y - ((num_ticks - 1) * spacing)
 
     # draw vertical line
@@ -564,10 +570,10 @@ def fill_in_matches(cairo_context, y: float, x_pos: float, allocated_pos: float,
     return 0
 
 
-def plot_cmh(cairo_context, snps: list[SNP], svg_height: float, y_offset: float, 
+def plot_cmh(cairo_context, snps: list[SNP], fig_height: float, y_offset: float, 
              x_start: float, allocated_pos: float, ceiling: float) -> int:
     """draw the SNPs, which are circles representing the CMH value"""
-    allocated_pos_y = svg_height - (y_offset * 1.75)
+    allocated_pos_y = fig_height - (y_offset * 1.75)
 
     for snp in snps:
         x_pos = x_start + ((snp.pos - leftbound) * allocated_pos)
@@ -582,24 +588,31 @@ def plot_cmh(cairo_context, snps: list[SNP], svg_height: float, y_offset: float,
 def draw_image(exons: dict[str, FEATURE], snps: list[SNP], gaps: list[FEATURE], max_cmh: float) -> int:
     """plot clumps using plotting functions"""
 
-    global leftbound, rightbound, chrom
+    global leftbound, rightbound, chrom, iformat
 
     # this will create a svg for later tweaking
-    svg_width    = 5000  # 7500
-    svg_height   = 3000
+    fig_width    = 5000  # 7500
+    fig_height   = 3000
     y_offset     = 250
-    chrom_y_pos  = svg_height - y_offset
+    chrom_y_pos  = fig_height - y_offset
     chrom_x_pos  = 450
     y_axix_x_pos = 400
-    section      = svg_height * 0.02
+    section      = fig_height * 0.02
     seq_len      = rightbound - leftbound
     
-    spacing, ceiling = get_y_spacing(svg_height, y_offset, max_cmh)
+    spacing, ceiling = get_y_spacing(fig_height, y_offset, max_cmh)
     
     # create the drawing surface
-    ims           = cairo.SVGSurface(f"{chrom}-{leftbound}-{rightbound}.svg", svg_width, svg_height)
+    outname = f"{chrom}-{leftbound}-{rightbound}.{iformat}"
+    if (iformat == "svg"):
+        ims = cairo.SVGSurface(outname, int(fig_width), int(fig_height))
+    elif (iformat == "pdf"):
+        ims = cairo.PDFMetadata(outname, int(fig_width), int(fig_height))
+    elif (iformat == "png"):
+        ims = cairo.ImageSurface(cairo.FORMAT_ARGB32, int(fig_width), int(fig_height))
+
     cairo_context = cairo.Context(ims)
-    image_width   = svg_width - (chrom_x_pos * 1.5)  # offset by starting positions on both sides
+    image_width   = fig_width - (chrom_x_pos * 1.5)  # offset by starting positions on both sides
 
     # create allocated posititions for sites
     allocated_pos = image_width / seq_len
@@ -611,12 +624,17 @@ def draw_image(exons: dict[str, FEATURE], snps: list[SNP], gaps: list[FEATURE], 
     if (len(gaps) > 0):
         for gap in gaps:
             fill_in_matches(cairo_context, chrom_y_pos, chrom_x_pos, allocated_pos, gap.lpos, gap.rpos, gap.color)
-    plot_cmh(cairo_context, snps, svg_height, y_offset, chrom_x_pos, allocated_pos, ceiling)
-    draw_y_axis(cairo_context, y_axix_x_pos, svg_height, y_offset, spacing, ceiling)
+    plot_cmh(cairo_context, snps, fig_height, y_offset, chrom_x_pos, allocated_pos, ceiling)
+    draw_y_axis(cairo_context, y_axix_x_pos, fig_height, y_offset, spacing, ceiling)
     
     # finish plot
-    ims.finish()
-    ims.flush()
+    if (iformat == "svg"):
+        ims.finish()
+        ims.flush()
+    elif (iformat == "pdf"):
+        cairo_context.show_page()
+    elif (iformat == "png"):
+        ims.write_to_png(outname)
 
     return 0
 
