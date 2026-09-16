@@ -327,7 +327,6 @@ def get_y_spacing(img_height: int, y_offset: float) -> tuple[float, float, float
 
 ########## plotting functions #############
 
-
 def plot_chrom(cairo_context, seq_length: int, seq_id: str, allocated_pos: float, 
                seq_height: float, x_pos: float) -> int:
     """plot a rectange to represent the genomic locus"""
@@ -426,7 +425,7 @@ def create_ticks(seq_length: int) -> tuple[int, int]:
         5e8:   ["M", 1500000],
         9e8:   ["M", 3000000],
         1e9:   ["M", 5000000],
-        }
+    }
 
     multiplier = None
 
@@ -711,4 +710,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
